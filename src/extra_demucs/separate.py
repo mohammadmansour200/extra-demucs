@@ -13,7 +13,8 @@ def extra_separator(
         download_format: str,
         quality: str,
         output_dir: str,
-        model_name: str = 'htdemucs'
+        model_name: str = 'htdemucs',
+        segment: str = "7.8"
 ):
     """
     Separates vocals from a list of media files (audio/video), using Demucs, and replaces
@@ -31,6 +32,7 @@ def extra_separator(
         quality (str): Quality level for yt-dlp downloading ("high", "low", "medium").
         output_dir (str): Path to directory where final results will be saved.
         model_name (str): If you wanted to use a different model for your case. Default "htdemucs"
+        segment (str): Seconds of segments. Default "7.8"
 
     Notes:
         - Requires `ffmpeg`, and internet access for remote URLs.
@@ -69,7 +71,8 @@ def extra_separator(
 
     # --- Demucs model inference ---
     separate.main(
-        ["-n", model_name, "--mp3", "--mp3-bitrate", int_quality[quality], "--two-stems", "vocals", "--filename",
+        ["--segment", segment, "-n", model_name, "--mp3", "--mp3-bitrate", int_quality[quality], "--two-stems",
+         "vocals", "--filename",
          "{track}_{stem}.{ext}", "-o",
          abs_output_dir,
          *processing_file_paths]
