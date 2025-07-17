@@ -17,14 +17,15 @@ class Downloader:
         self.quality = quality
         self.is_output_video = self.media_type == "video"
 
-    def download(self, url: str) -> str:
+    def download(self, url: str) -> tuple[str, Any]:
         self._initialize_youtube_dl()
 
         self.youtube_dl.download(url)
         url_data = self.youtube_dl.extract_info(url, download=False)
 
         filename = f"{url_data['id']}.{url_data['ext']}"
-        return filename
+        duration = float(url_data['duration']) or None
+        return filename, duration
 
     def _initialize_youtube_dl(self) -> None:
         self.youtube_dl = yt_dlp.YoutubeDL(self._config())

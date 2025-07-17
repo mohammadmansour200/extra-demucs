@@ -36,7 +36,6 @@ extra_separator(
     download_format="audio",   # or "video"
     quality="medium",     # "low", "medium", "high"
     output_dir="outputs"
-    model_name="htdemucs"
 )
 
 ```

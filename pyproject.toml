@@ -1,6 +1,6 @@
 [project]
 name = "extra-demucs"
-version = "0.1.1"
+version = "0.2.0"
 description = "Extended Demucs with yt-dlp and Video support."
 license = "MIT License"
 packages = [{ include = "extra_demucs", from = "src" }]

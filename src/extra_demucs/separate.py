@@ -4,7 +4,7 @@ import shutil
 import validators
 from demucs import separate
 
-from extra_demucs.downloader import int_quality, Downloader
+from extra_demucs.downloader import Downloader
 from extra_demucs.ffmpeg_utils import FFMPEGUtils
 
 
@@ -13,8 +13,7 @@ def extra_separator(
         download_format: str,
         quality: str,
         output_dir: str,
-        model_name: str = 'htdemucs',
-        segment: str = "7.8"
+        segment_duration: int = 30
 ):
     """
     Separates vocals from a list of media files (audio/video), using Demucs, and replaces
@@ -25,14 +24,14 @@ def extra_separator(
     - Performing source separation using Demucs (vocal isolation)
     - For video: replacing the original audio with vocals using ffmpeg
     - Cleaning up intermediate files and keeping only the final output
+    - Segmented processing in case of low-end devices
 
     Parameters:
         files (list[str]): List of file paths or URLs pointing to audio/video files.
         download_format (str): Either "audio" or "video". Determines post-processing behavior.
         quality (str): Quality level for yt-dlp downloading ("high", "low", "medium").
         output_dir (str): Path to directory where final results will be saved.
-        model_name (str): If you wanted to use a different model for your case. Default "htdemucs"
-        segment (str): Seconds of segments. Default "7.8"
+        segment_duration (int): Segment duration in seconds. Defaults to 30 minutes chunks (1800 seconds)
 
     Notes:
         - Requires `ffmpeg`, and internet access for remote URLs.
@@ -48,66 +47,107 @@ def extra_separator(
             output_dir="output"
         )
     """
-
     abs_output_dir = os.path.abspath(output_dir)
-    processing_file_paths = []
+    temp_output_dir = os.path.join(abs_output_dir, 'tmp')
+    demucs_output_dir = os.path.join(abs_output_dir, "htdemucs")
 
-    # --- Download online media files using yt-dlp ---
-    print("Downloading files...")
-    downloaded_output_dir = os.path.join(abs_output_dir, 'tmp')
+    ffmpeg_utils = FFMPEGUtils()
+
+    processing_files_path = []
+    processing_files_path_with_chunks = []
+
+    # --- Preparing files for processing ---
+    print("Preparing files...")
     downloader = Downloader(
-        output_dir=downloaded_output_dir,
+        output_dir=temp_output_dir,
         media_type=download_format,
         quality=quality
     )
-    for url in files:
+    for index, url in enumerate(files):
         is_url = validators.url(url)
         if is_url:
-            downloaded_file_name = downloader.download(url=url)
-            downloaded_file_path = os.path.join(downloaded_output_dir, downloaded_file_name)
-            processing_file_paths.append(downloaded_file_path)
+            downloaded_file_name, downloaded_file_duration = downloader.download(url=url)
+            downloaded_file_path = os.path.join(temp_output_dir, downloaded_file_name)
+
+            if downloaded_file_duration is None:
+                total_duration = ffmpeg_utils.duration(downloaded_file_path)
+            else:
+                total_duration = downloaded_file_duration
+
+            processing_files_path.append(downloaded_file_path)
+            processing_files_path_with_chunks.append(downloaded_file_path)
         else:
-            processing_file_paths.append(os.path.abspath(url))
+            total_duration = ffmpeg_utils.duration(os.path.abspath(url))
+            processing_files_path.append(os.path.abspath(url))
+            processing_files_path_with_chunks.append(os.path.abspath(url))
+
+        if total_duration > segment_duration:
+            file_chunks = []
+            offset = 0
+            while offset < total_duration:
+                current_file = processing_files_path[index]
+                duration_to_process = min(segment_duration, total_duration - offset)
+
+                output_path = ffmpeg_utils.chunk(input_path=current_file, input_file_index=index,
+                                                 output_dir=temp_output_dir, duration_to_process=duration_to_process,
+                                                 offset=offset, segment_duration=segment_duration)
+
+                file_chunks.append(output_path)
+                offset += segment_duration
+            processing_files_path_with_chunks[index:index + 1] = file_chunks
 
     # --- Demucs model inference ---
-    separate.main(
-        ["--segment", segment, "-n", model_name, "--mp3", "--mp3-bitrate", int_quality[quality], "--two-stems",
-         "vocals", "--filename",
-         "{track}_{stem}.{ext}", "-o",
-         abs_output_dir,
-         *processing_file_paths]
-    )
+    separate.main([
+        "--two-stems", "vocals",
+        "--filename", "{track}_{stem}.{ext}",
+        "-o", abs_output_dir,
+        *processing_files_path_with_chunks
+    ])
 
     # --- Postprocess ---
-    demucs_output_dir = os.path.join(abs_output_dir, model_name)
-    demucs_output_dir_files = os.listdir(demucs_output_dir)
-    ffmpeg_utils = FFMPEGUtils()
-    for file in demucs_output_dir_files:
-        if not "no_vocals" in file:
-            demucs_file_name = os.path.splitext(os.path.basename(file))[0]
+    for file_index, original_file_path in enumerate(processing_files_path):
+        original_file_name = os.path.splitext(os.path.basename(original_file_path))[0]
+        vocal_output_name = f"{original_file_name}_vocals"
+        vocal_output_path = os.path.join(demucs_output_dir, vocal_output_name)
+        vocal_output_mp3_path = f"{vocal_output_path}.mp3"
 
-            filtered_processing_file_paths = [token for token in processing_file_paths if
-                                              demucs_file_name.replace("_vocals", "") in token]
+        # --- Find chunks associated with the current file ---
+        matching_chunk_paths = [
+            chunk_path for chunk_path in processing_files_path_with_chunks
+            if f"{file_index}_demucschunk" in chunk_path
+        ]
 
-            for processing_file_path in filtered_processing_file_paths:
-                is_video = ffmpeg_utils.is_video(processing_file_path)
-                if is_video:
-                    input_audio_path = os.path.join(demucs_output_dir, file)
-                    filename_format = "{destination}.{codec}"
-                    output_path = filename_format.format(
-                        destination=os.path.join(abs_output_dir, demucs_file_name),
-                        codec="mp4",
-                    )
-                    print(f"Saving video in {abs_output_dir}")
-                    ffmpeg_utils.replace_video_audio(input_video_path=processing_file_path,
-                                                     input_audio_path=input_audio_path,
-                                                     final_output_path=output_path)
-                else:
-                    print(f"Saving audio in {abs_output_dir}")
-                    source_file_path = os.path.join(demucs_output_dir, file)
-                    destination_file_path = os.path.join(abs_output_dir, file)
-                    shutil.move(source_file_path, destination_file_path)
+        if matching_chunk_paths:
+            ffmpeg_utils.merge(
+                segment_files=matching_chunk_paths,
+                output_dir=demucs_output_dir,
+                output_name=vocal_output_name
+            )
+        else:
+            ffmpeg_utils.convert_to_mp3(
+                output_dir=demucs_output_dir,
+                output_name=vocal_output_name
+            )
+
+        is_original_file_video = ffmpeg_utils.is_video(original_file_path)
+        if is_original_file_video:
+            final_video_output_path = "{destination}.{codec}".format(
+                destination=os.path.join(abs_output_dir, vocal_output_name),
+                codec="mp4"
+            )
+            print(f"Saving video in {abs_output_dir}")
+            ffmpeg_utils.replace_video_audio(
+                input_video_path=original_file_path,
+                input_audio_path=vocal_output_mp3_path,
+                final_output_path=final_video_output_path
+            )
+        else:
+            print(f"Saving audio in {abs_output_dir}")
+            final_audio_output_path = os.path.join(abs_output_dir, f"{vocal_output_name}.mp3")
+            shutil.move(vocal_output_mp3_path, final_audio_output_path)
 
     # --- Cleanup ---
-    shutil.rmtree(downloaded_output_dir)
-    shutil.rmtree(demucs_output_dir)
+    if os.path.exists(temp_output_dir):
+        shutil.rmtree(temp_output_dir)
+    if os.path.exists(demucs_output_dir):
+        shutil.rmtree(demucs_output_dir)
