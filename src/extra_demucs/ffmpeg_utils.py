@@ -35,8 +35,6 @@ class FFMPEGUtils:
                 "-i", input_audio_path,
                 "-map", "0:v",
                 "-map", "1:a",
-                "-c:v", "copy",
-                "-c:a", "copy",
                 final_output_path, ], check=True)
         except Exception as e:
             raise Exception(

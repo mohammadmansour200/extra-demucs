@@ -58,6 +58,10 @@ def extra_separator(
 
     # --- Preparing files for processing ---
     print("Preparing files...")
+
+    if not files:
+        raise Exception("Please provide files for processing")
+
     downloader = Downloader(
         output_dir=temp_output_dir,
         media_type=download_format,
