@@ -1,3 +1,11 @@
+<div align="center">
+  <a href="https://pypi.org/project/extra-demucs" target="_blank"><img src="https://img.shields.io/pypi/v/extra-demucs?label=PyPI%20Version&color=limegreen" /></a>
+  <a href="https://pypi.org/project/extra-demucs" target="_blank"><img src="https://img.shields.io/pypi/pyversions/extra-demucs?color=limegreen" /></a>
+  <a href="https://github.com/mohammadmansour200/extra-demucs/blob/main/LICENSE" target="_blank"><img src="https://img.shields.io/pypi/l/extra-demucs?color=limegreen" /></a>
+  <a href="https://pepy.tech/project/extra-demucs" target="_blank"><img src="https://static.pepy.tech/badge/extra-demucs" /></a>
+  <a href="https://baseet.netlify.app/ai" target="_blank"><img src="https://colab.research.google.com/assets/colab-badge.svg" /></a>
+</div>
+
 `extra_demucs`: Extended [Demucs](https://github.com/facebookresearch/demucs) with yt-dlp media downloading and Video
 Music removal
 
