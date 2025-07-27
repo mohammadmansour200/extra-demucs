@@ -89,8 +89,11 @@ class FFMPEGUtils:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        final_output_path = os.path.join(output_dir,
-                                         f"{input_file_index}_demucschunk_{offset // segment_duration}.{"mp3" if chunk_ext is None else chunk_ext}")
+        final_output_path = os.path.join(
+            output_dir,
+            f"{input_file_index}_demucschunk_{offset // segment_duration}.{'mp3' if chunk_ext is None else chunk_ext}"
+        )
+
         try:
             subprocess.run([
                 "ffmpeg",
@@ -128,7 +131,7 @@ class FFMPEGUtils:
                 "-f", "concat",
                 "-safe", "0",
                 "-i", os.path.join(output_dir, "file_list.txt"),
-                os.path.join(output_dir, f"{output_name}.{"mp3" if output_ext is None else output_ext}")
+                os.path.join(output_dir, f"{output_name}.{'mp3' if output_ext is None else output_ext}")
             ]
                 , check=True)
         except Exception as e:
@@ -138,9 +141,10 @@ class FFMPEGUtils:
                 )
             )
 
-    def convert_to_audio_format(self, output_dir: str, output_name: str, format: str):
+    def convert_to_audio_format(self, output_dir: str, output_name: str, audio_format: str):
         processed_demucs_file_path = os.path.join(output_dir, f"{output_name}.wav")
-        final_output_file_path = os.path.join(output_dir, f"{output_name}.{"mp3" if format is None else format}")
+        final_output_file_path = os.path.join(output_dir,
+                                              f"{output_name}.{'mp3' if audio_format is None else audio_format}")
         try:
             subprocess.run([
                 "ffmpeg",

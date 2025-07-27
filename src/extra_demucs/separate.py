@@ -148,7 +148,7 @@ def extra_separator(
             ffmpeg_utils.convert_to_audio_format(
                 output_dir=demucs_output_dir,
                 output_name=vocal_output_name,
-                format=video_audio_track_ext
+                audio_format=video_audio_track_ext
             )
 
         is_original_file_video = ffmpeg_utils.is_video(original_file_path)
