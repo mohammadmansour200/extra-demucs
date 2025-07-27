@@ -35,6 +35,8 @@ class FFMPEGUtils:
                 "-i", input_audio_path,
                 "-map", "0:v",
                 "-map", "1:a",
+                "-c:v", "copy",
+                "-c:a", "copy",
                 final_output_path, ], check=True)
         except Exception as e:
             raise Exception(
@@ -83,11 +85,12 @@ class FFMPEGUtils:
         return float(result.stdout)
 
     def chunk(self, input_path: str, input_file_index: int, output_dir: str, duration_to_process: int, offset: int,
-              segment_duration: int) -> str:
+              segment_duration: int, chunk_ext: str) -> str:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        final_output_path = os.path.join(output_dir, f"{input_file_index}_demucschunk_{offset // segment_duration}.mp3")
+        final_output_path = os.path.join(output_dir,
+                                         f"{input_file_index}_demucschunk_{offset // segment_duration}.{"mp3" if chunk_ext is None else chunk_ext}")
         try:
             subprocess.run([
                 "ffmpeg",
@@ -107,7 +110,7 @@ class FFMPEGUtils:
         return final_output_path
 
     def merge(
-            self, segment_files: list, output_dir: str, output_name: str
+            self, segment_files: list, output_dir: str, output_name: str, output_ext: str
     ):
         # --- Create a temporary text file to list all audio files to merge ---
         with open(os.path.join(output_dir, "file_list.txt"), "w") as file_list:
@@ -125,7 +128,7 @@ class FFMPEGUtils:
                 "-f", "concat",
                 "-safe", "0",
                 "-i", os.path.join(output_dir, "file_list.txt"),
-                os.path.join(output_dir, f"{output_name}.mp3")
+                os.path.join(output_dir, f"{output_name}.{"mp3" if output_ext is None else output_ext}")
             ]
                 , check=True)
         except Exception as e:
@@ -135,9 +138,9 @@ class FFMPEGUtils:
                 )
             )
 
-    def convert_to_mp3(self, output_dir: str, output_name: str):
+    def convert_to_audio_format(self, output_dir: str, output_name: str, format: str):
         processed_demucs_file_path = os.path.join(output_dir, f"{output_name}.wav")
-        final_output_file_path = os.path.join(output_dir, f"{output_name}.mp3")
+        final_output_file_path = os.path.join(output_dir, f"{output_name}.{"mp3" if format is None else format}")
         try:
             subprocess.run([
                 "ffmpeg",
