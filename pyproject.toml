@@ -1,6 +1,6 @@
 [project]
 name = "extra-demucs"
-version = "0.5.0"
+version = "0.6.0"
 description = "Extended Demucs with yt-dlp and Video support."
 license = "MIT License"
 packages = [{ include = "extra_demucs", from = "src" }]
@@ -24,7 +24,7 @@ authors = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "yt-dlp (==2025.6.30)",
+    "yt-dlp (>=2025.8.22)",
     "validators (>=0.35.0,<0.36.0)",
     "demucs (>=4.0.1,<5.0.0)"
 ]
